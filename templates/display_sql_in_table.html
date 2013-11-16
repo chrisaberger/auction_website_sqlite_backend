@@ -1,0 +1,43 @@
+<table border="1">
+    <tr>
+        {% for col in cols %}
+            {% if col!="description" %}
+                {% if col=="currently" %}
+                    <th>Top Bid</th>
+                {% else %}
+                    <th>{{col}}</th>
+                {% endif %}
+            {% endif %}
+        {% endfor %} 
+        {% for catCol in catCols %}
+            <th>{{catCol}}</th>
+        {% endfor %}
+ 
+    </tr>
+    {% for row in rows %}
+        <tr>
+        {% for col in cols %}
+            <td align="center">
+            {% if col=="itemID" %}
+                <a href="http://www.stanford.edu/~caberger/cgi-bin/auctionbase.py/auction?id={{row[col]}}">{{row[col]}}</a>
+                </td>
+            {% else %}
+                {% if col!="description" %}
+                    {% if col=="currently" or col=="amount" %}
+                        ${{row[col]}}
+                    {% else %}
+                        {{row[col]}}
+                    {% endif %}
+                    </td>
+                {% endif %}
+           {% endif %}
+        {% endfor %}   
+            {% for catRow in catRows %}
+                {% for catCol in catCols %}
+                    {{catRow[catCol]}}.
+                {% endfor %}
+            {% endfor %}
+            </td>
+        </tr>
+    {% endfor %}
+</table>
