@@ -10,11 +10,18 @@
             <option value="closed">Closed</option>
         </select>
     </p>    
+    <p align="center">Sort by:
+        <select size="1" name="sort_by">
+            <option value="price">Price</option>
+            <option value="endTime">End Time</option>
+            <option value="numberOfBids"># of Bids</option>
+        </select>
+    </p>     
     <p align="center"><b>Item ID:</b> <input type="text" name="itemid" value=""></p>
     <p align="center"><b>Name:</b> <input type="text" name="name" value=""></p>
     <p align="center"><b>Category:</b> <input type="text" name="category" value=""></p>
-    <p align="center"><b>Price Range</b> from: <input type="text" name="fromPrice" value="">
-        to: <input type="text" name="toPrice" value=""</p>
+    <p align="center"><b>Price Range</b> from: $<input type="text" name="fromPrice" value="">
+        to: $<input type="text" name="toPrice" value=""</p>
     <p align="center"><input type="submit" value="Search"></p>   
 </form>
 
@@ -22,12 +29,13 @@
 <p align="center">{{message}}</p>
 {% endif %}
 
-{% set rows = itemRows %}
-{% set cols = itemCols %}
-{% if rows %}
-<p align="center"><h4>Item Information</h4><p>
-{% include 'display_sql_in_table.html' %}
+{% if itemInfo is defined %}
+    {% set rows = itemInfo['rows'] %}
+    {% set cols = itemInfo['cols'] %}
+    {% if rows %}
+        <p align="center"><h4>Item Information</h4><p>
+    {% include 'display_sql_in_table.html' %}
+    {% endif %}
 {% endif %}
-
 
 {% endblock %}

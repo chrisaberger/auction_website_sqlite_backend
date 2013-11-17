@@ -53,10 +53,7 @@ def render_template(template_name, **context):
 urls = ('/currtime', 'curr_time',
         '/selecttime', 'select_time',
         '/search_auctions', 'search_auctions',
-        # TODO: add additional URLs here
         '/auction','auction'
-        #'/auction?id=(.+)','auctionWithID'
-        # first parameter => URL, second parameter => class name
         )
 
 class sql_page:
@@ -65,141 +62,148 @@ class sql_page:
         inCols = []
         if inRows:
             inCols = inRows[0].keys()
-        return inRows,inCols
+        return {'rows':inRows,'cols':inCols}
 
 class auction(sql_page):
     def GET(self):
         post_params = web.input()
-        if(post_params):
-            #get item information
+        try:
             itemID = int(post_params['id'])
-            itemResults,categoryResults = sqlitedb.filterByItemId(itemID)
-            itemRows,itemCols = self.prepareQueryForRender(itemResults)
-            description = itemRows[0]['description']
-            categoryRows,categoryCols = self.prepareQueryForRender(categoryResults) 
-    
-            bidClosed = sqlitedb.isAuctionClosed(itemID)
-            print("bidClosed : %b ", bidClosed)
-            sellerID = itemRows[0]['sellerID'] 
-            sellerQuery = sqlitedb.filterBySeller(sellerID)
-            sellerRows,sellerCols = self.prepareQueryForRender(sellerQuery)
+        except:
+            return render_template('auction.html')
+        return self.getNotOverloaded(itemID,'')
+        #get item information
+        #if no item lookup display basic template
+    def getNotOverloaded(self,itemID,message):
+        itemResults = sqlitedb.getAuctionByItemID(itemID)
+        itemInfo = self.prepareQueryForRender(itemResults)
+        categoryResults = sqlitedb.getAuctionCategories(itemID)
+        bidClosed = sqlitedb.isAuctionClosed(itemID)
+        sellerResults = sqlitedb.filterBySeller( ((itemInfo['rows'])[0]['sellerID']) )
+        bidResults = sqlitedb.getBidHistory(itemID)
+        winner = sqlitedb.auctionWinner(itemID)        
+
+        categoryInfo = self.prepareQueryForRender(categoryResults) 
+        sellerInfo = self.prepareQueryForRender(sellerResults)
+        bidInfo = self.prepareQueryForRender(bidResults)
+        try: 
+            winner = winner[0]['bidderID']
+        except:
+            winner='Nobody'
+        itemInfo.update(\
+            {'bidClosed':bidClosed,\
+            'winner':winner,\
+            'description':(itemInfo['rows'])[0]['description']})
+        #overwrite the item cols because the order gets randomly changed
+        itemInfo['cols'] = ['itemID','name','currently','buyPrice','numberOfBids','started','ends','sellerID','firstBid']        
+        return render_template('auction.html', \
+            itemInfo = itemInfo,\
+            categoryInfo = categoryInfo,\
+            bidInfo = bidInfo,\
+            message = message,\
+            sellerInfo = sellerInfo)
         
-            bidResults = sqlitedb.getBidHistory(itemID)
-            bidRows,bidCols = self.prepareQueryForRender(bidResults)
-        
-            winner = sqlitedb.auctionWinner(itemID)        
-            try: 
-                winnerIn = winner[0]['bidderID']
-            except:
-                winnerIn='Nobody'
-                    
-            return render_template('auction.html', \
-                itemRows = itemRows, itemCols = itemCols, description=description, \
-                categoryRows = categoryRows, categoryCols = categoryCols, \
-                sellerRows = sellerRows, sellerCols = sellerCols, winner = winnerIn, \
-                bidRows = bidRows, bidCols=bidCols, bidClosed = bidClosed)
-        return render_template('auction.html')
     def POST(self):
-        return render_template('auction.html')
+        post_params = web.input()
+        message = ''
+        itemid = int(post_params['itemid'])
+        try:
+            itemid = int(post_params['itemid'])
+        except:
+            message = 'Bad entry: you must enter a item id!'
+            return render_template('auction.html',message=message)
+        userid = post_params['userid']
+        if(userid==''):
+            message = 'Bad entry you must enter your user id!'
+            return render_template('auction.html',message=message)
+        try:
+            price = float(post_params['price'])
+        except:
+            message = 'Bad entry: you must enter a price!'
+            return render_template('auction.html',message=message)
+        currentTime = sqlitedb.getTime()
+        sqlitedb.placeBid(currentTime,itemid,userid,price)
+        message = userID + ' successfully placed a bid of $' + str(price) +' itemID=' + str(itemid)
+        return self.getNotOverloaded(itemid,message)
+        #return render_template('auction.html',message=message)
 
 class search_auctions(sql_page):
     def GET(self):
+        itemInfo = {'rows':[],'cols':[]}
         return render_template('search_auctions.html')
     def POST(self):
+        search_params = self.getSearchParameters()
+        return self.displaySearch(search_params)
+
+    def getSearchParameters(self):
+        #this method is ugly ugghhhhh
+        #grab input
         post_params = web.input()
+        #bid status: open,closed or any
+        #must come as first term in search query
+        #last case does nothing just a way to get syntax with AND's in others to work
         bidStatus = post_params['bid_status']
         if bidStatus=='closed':
-            bidStatus='and Date(currentTime)>=Date(ends)'
+            bidStatus=' Datetime(currentTime)>=Datetime(ends) '
         elif bidStatus=='open':
-            bidStatus='and Date(currentTime)<Date(ends)'
+            bidStatus=' Datetime(currentTime)<Date(ends) '
         else:
-            bidStatus=' order by currently'
-
+            bidStatus=' Datetime(currentTime)=Datetime(currentTime)'
+        #how to order the search results for display
+        order = post_params['sort_by']
+        if order=='price':
+            order= ' order by currently '
+        elif order=='endTime':
+            order= ' order by ends '
+        else:
+            order=' order by numberOfBids'
+        #category:string to filter category names on
+        #need a seperate query b/c schema has it in seperate table
+        category = ' and categoryName like \'%' + post_params['category'] + '%\''
+        if(category=='%%'):
+            category = None 
+        #name:string to filter name, directly appended to queries
         name = post_params['name']
         if name != '':
             name = ' and name like \'%' + name + '%\' '
-         
+        #itemID: query string
         try:
-            itemID = int(post_params['itemid'])
+            itemID = ' and itemID=' + int(post_params['itemid']) + ' '
         except:
-            itemID = None
+            itemID = ''
+        #priceHigh: query string
         try:
-            priceHigh = float(post_params['toPrice'])
+            priceHigh = ' and currently<=' + float(post_params['toPrice']) + ' '
         except: 
-            priceHigh = None
+            priceHigh = ''
+        #priceLow: query string
         try:
-            priceLow = float(post_params['fromPrice']) 
+            priceLow = ' and currently>=' + float(post_params['fromPrice']) + ' '
         except:
-            priceLow = 0
-        try:
-            category = '%' + post_params['category'] + '%'
-            if(category=='%%'):
-                raise Exception("No value for category")
-        except:
-            category = None
-        
-        if itemID is not None:
-            return self.displayByItemID(itemID,name,bidStatus)
-        elif category is not None and priceHigh is not None:
-            return self.displayByPriceAndCategory(category,priceLow,priceHigh,name,bidStatus)
-        elif category is not None and priceHigh is None:
-            return self.displayByCategory(category,priceLow,name,bidStatus)
-        elif priceHigh is not None:
-            return self.displayByPrice(priceHigh,priceLow,name,bidStatus)
-        else:
-            return self.displayByStatus(priceLow,name,bidStatus)
-             #if(bidClosed and bidStatus=='Open'):
-            #    raise Exception("Search produced only a closed bid")
-        #except:   itemResults,categoryResults = sqlitedb.filterByItemId(itemID)
-        #    itemRows,itemCols = self.prepareQueryForRender(itemResults)
-        #    catRows, catCols = self.prepareQueryForRender(categoryResults)
-        #    bidClosed = sqlitedb.isAuctionClosed('itemID')
+            priceLow = ''
 
-    def displayByItemID(self,itemID,name,bidStatus):
-        itemResults = sqlitedb.filterByItemIDSimple(itemID,name,bidStatus)
-        itemRows,itemCols = self.prepareQueryForRender(itemResults)
+        return {'bidStatus':bidStatus,\
+            'name':name,\
+            'itemID':itemID,\
+            'priceHigh':priceHigh,\
+            'priceLow':priceLow,\
+            'order':order,\
+            'category':category}
+
+    def displaySearch(self,search_params):
+        if search_params['category']=='':
+            itemResults = sqlitedb.filterOnItemRelation(search_params)
+        else:
+            itemResults = sqlitedb.filterOnItemAndCategoryRelation(search_params)
+        itemInfo = self.prepareQueryForRender(itemResults)
+        #overwrite the item cols because the order gets randomly changed
+        itemInfo['cols'] = ['itemID','name','currently','buyPrice','numberOfBids','started','ends']
         message = ''
-        if itemRows==[]:
+        if itemInfo['rows']==[]:
             message = "I'm sorry nothing met your search criteria. Please try a more general option."
         return render_template('search_auctions.html', \
-            itemRows = itemRows, itemCols = itemCols, message=message) \
-    
-    def displayByPriceAndCategory(self,category,priceLow,priceHigh,name,bidStatus):
-        itemResults = sqlitedb.filterByPriceAndCategory(category,priceLow,priceHigh,name,bidStatus)
-        itemRows,itemCols = self.prepareQueryForRender(itemResults)
-        message = ''
-        if itemRows==[]:
-            message = "I'm sorry nothing met your search criteria. Please try a more general option."
-        return render_template('search_auctions.html', \
-            itemRows = itemRows, itemCols = itemCols, message=message) \
-    
-    def displayByCategory(self,category,priceLow,name,bidStatus):
-        itemResults = sqlitedb.filterByCategory(category,priceLow,name,bidStatus)
-        itemRows,itemCols = self.prepareQueryForRender(itemResults)
-        message = ''
-        if itemRows==[]:
-            message = "I'm sorry nothing met your search criteria. Please try a more general option."
-        return render_template('search_auctions.html', \
-            itemRows = itemRows, itemCols = itemCols, message=message) \
- 
-    def displayByPrice(self,priceHigh,priceLow,name,bidStatus):
-        itemResults = sqlitedb.filterByPrice(priceHigh,priceLow,name,bidStatus)
-        itemRows,itemCols = self.prepareQueryForRender(itemResults)
-        message = '' 
-        if itemRows==[]:
-            message = "I'm sorry nothing met your search criteria. Please try a more general option."
-        return render_template('search_auctions.html', \
-            itemRows = itemRows, itemCols = itemCols, message=message)
-         
-    def displayByStatus(self,priceLow,name,bidStatus):
-        itemResults = sqlitedb.filterByBidStatus(priceLow,name,bidStatus)
-        itemRows,itemCols = self.prepareQueryForRender(itemResults)
-        message = ''
-        if itemRows==[]:
-            message = "I'm sorry nothing met your search criteria. Please try a more general option."
-        return render_template('search_auctions.html', \
-            itemRows = itemRows, itemCols = itemCols, message=message)
-       
+            itemInfo = itemInfo,\
+            message=message)   
 
 class curr_time:
     # A simple GET request, to '/currtime'

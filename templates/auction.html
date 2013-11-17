@@ -1,57 +1,74 @@
 {% extends "app_base.html" %}
 {% block content %}
 <h3> Auction Page </h3>
-{# display item information #}
-{% set rows = itemRows %}
-{% set cols = itemCols %}
-{% if rows %}
-{% if bidClosed %}
-<h2> {{winner}} has won this item! </h2>
-<p align="center"> Auction is CLOSED for the following item!<p>
-{% else %}
-<p align="center"> Auction is OPEN for the following item!<p>
+{% if message is defined %}
+	{{message}}
 {% endif %}
-<p align="center"><h4>Item Information</h4><p>
-{% include 'display_sql_in_table.html' %}
+{# display item information #}
+{% if itemInfo is defined %}
+	{% set rows = itemInfo['rows'] %}
+	{% set cols = itemInfo['cols'] %}
+	{% if rows %}
+		{% if itemInfo['bidClosed'] %}
+			<h2> {{itemInfo['winner']}} has won this item! </h2>
+			<p align="center"> Auction is CLOSED for the following item!<p>
+		{% else %}
+		<p align="center"> Auction is OPEN for the following item!<p>
+		{% endif %}
+	{% endif %}
+	<p align="center"><h4>Item Information</h4><p>
+	{% include 'display_sql_in_table.html' %}
 {% endif %}
 
 {# trick my existing template to just print out cat info #}
 {% set cols = ["description"] %}
 {% set rows = ["description"] %}
-{% set catCols = categoryCols %}
-{% set catRows = categoryRows %}
-<p></p>
-{% include 'display_sql_in_table.html' %}
+{% if categoryInfo is defined %}
+	{% set catCols = categoryInfo['cols'] %}
+	{% set catRows = categoryInfo['rows'] %}
+	<p></p>
+	{% include 'display_sql_in_table.html' %}
+{% endif %}
 {% set catCols = [] %}
 {% set catRows = [] %}
 
-<h5>Description</h5>
-<p align="center">{{description}}</p>
+{% if itemInfo is defined %}
+	<h4>Description</h4>
+	<p align="center">{{itemInfo['description']}}</p>
+{% endif %}
 
 {# display seller information #}
-{% set rows = sellerRows %}
-{% set cols = sellerCols %}
-{% if rows %}
-<p align="center"><h4>Seller Information</h4><p>
-{% include 'display_sql_in_table.html' %}
+{% if sellerInfo is defined %}
+	{% set rows = sellerInfo['rows'] %}
+	{% set cols = sellerInfo['cols'] %}
+	{% if rows %}
+		<p align="center"><h4>Seller Information</h4><p>
+		{% include 'display_sql_in_table.html' %}
+	{% endif %}
 {% endif %}
 
 {# display bid history #}
-{% set rows = bidRows %}
-{% set cols = bidCols %}
-{% if rows %}
-<p align="center"><h4>Bid History</h4><p>
-{% include 'display_sql_in_table.html' %}
+{% if bidInfo is defined %}
+	{% set rows = bidInfo['rows'] %}
+	{% set cols = bidInfo['cols'] %}
+	{% if rows %}
+		<p align="center"><h4>Bid History</h4><p>
+		{% include 'display_sql_in_table.html' %}
+	{% endif %}
 {% endif %}
 
-{% if not bidClosed or bidClosed is undefined %} 
-<br/><center>Please enter a bid for an open auction.</center>
-<form method="POST" action="auction">
-    <p align="center"><b>Item ID:</b> <input type="text" name="itemid" value="">
-        <b>User ID:</b> <input type="text" name="category" value="">
-        <b>Price:</b> <input type="text" name="fromPrice" value=""></p>
-    <p align="center"><input type="submit" value="Place"></p>   
-</form>
+{% set displayItemID = '' %}
+{% if itemInfo is defined %}
+	{% set displayItemID = itemInfo['rows'][0]['itemID'] %}
+{% endif %}
+{% if itemInfo is undefined or not itemInfo['bidClosed'] %} 
+	<br/><center>Please enter a bid for an open auction.</center>
+	<form method="POST" action="auction">
+	    <p align="center"><b>item id:</b> <input type="text" name="itemid" value="{{displayItemID}}">
+	        <b>User ID:</b> <input type="text" name="userid" value="">
+	        <b>Price:</b> $<input type="text" name="price" value=""></p>
+	    <p align="center"><input type="submit" value="Place"></p>   
+	</form>
 {% endif %}
 
 {% endblock %}

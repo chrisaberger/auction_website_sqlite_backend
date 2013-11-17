@@ -24,35 +24,42 @@ def transaction():
 #     t.commit()
 #
 # check out http://webpy.org/cookbook/transactions for examples
+def getCurrentTime():
+    query_string = 'select currentTime from Time'
+    currentTime = query(query_string)
+    return currentTime
+def placeBid(currentTime,itemid,userid,price):
+    query_string = 'insert into Bid values ($ct,$bid,$p,$iid)'
+    query(query_string,{'iid':itemid,'ct':currentTime,'p':price,'bid':userid})
+    return 
+
 def auctionWinner(itemID):
     query_string = 'select bidderID from Bid where itemID=$id group by itemID having max(amount)'
-    item_results =query(query_string,{'id':itemID})
+    winnerID = query(query_string,{'id':itemID})
+    return winnerID
+
+def filterOnItemRelation(search_params):
+    query_string = 'select itemID,name,currently,numberOfBids,started,ends,buyPrice from Item join Time where ' \
+        + search_params['bidStatus']\
+        + search_params['name']\
+        + search_params['itemID']\
+        + search_params['priceHigh']\
+        + search_params['priceLow']\
+        + search_params['order']
+    item_results = query(query_string)
     return item_results
 
-def filterByItemIDSimple(item_id,name,bidStatus):
-    query_string = 'select * from Item where itemID=$id' + name + bidStatus
-    item_results =query(query_string,{'id': item_id})
+def filterOnItemAndCategoryRelation(search_params):
+    query_string = 'select itemID,name,currently,numberOfBids,started,ends,buyPrice from (Item join Category using(itemID)) join Time where ' \
+        + search_params['bidStatus']\
+        + search_params['name']\
+        + search_params['itemID']\
+        + search_params['priceHigh']\
+        + search_params['priceLow']\
+        + search_params['category']\
+        + search_params['order']
+    item_results =query(query_string)
     return item_results
- 
-def filterByPriceAndCategory(category,priceLow,priceHigh,name,bidStatus):
-    query_string = 'select distinct itemID,name,currently,ends,numberOfBids from (Item join Category using(itemID)) join Time where currently>=$pl and currently<=$ph and categoryName like $ct ' + name + bidStatus
-    item_results =query(query_string,{'pl':priceLow,'ph':priceHigh,'ct':category})
-    return item_results
-
-def filterByCategory(category,priceLow,name,bidStatus):
-    query_string = 'select distinct itemID,name,currently,ends,numberOfBids from (Item join Category using(itemID)) join Time where currently>=$pl and categoryName like $ct ' + name + bidStatus
-    item_results =query(query_string,{'pl':priceLow,'ct':category})
-    return item_results
-
-def filterByBidStatus(low,name,bidStatus):
-    query_string = 'select distinct itemID,name,currently,ends,numberOfBids from Item join Time where currently>=$l' + name + bidStatus 
-    item_results =query(query_string,{'l':low})
-    return item_results
-
-def filterByPrice(high,low,name,bidStatus):
-    query_string = 'select * from Item join Time where currently<=$h and currently>=$l ' + name + bidStatus
-    results = query(query_string,{'h':high,'l':low})
-    return results 
 
 def isAuctionClosed(itemID):
     query_string = 'select * from Item join Time where itemID=$id and Date(currentTime)<=Date(ends)'
@@ -69,14 +76,15 @@ def filterBySeller(seller_id):
     results = query(query_string,{'id':seller_id})
     return results
 
-def filterByItemId(item_id):
+def getAuctionByItemID(item_id):
     query_string = 'select * from Item where itemID=$id'
     item_results =query(query_string,{'id': item_id})
+    return item_results
  
+def getAuctionCategories(item_id):
     query_string = 'select categoryName as Categories from Category where itemID=$id'
     category_results = query(query_string,{'id': item_id})
-    
-    return item_results, category_results
+    return category_results
 
 def updateTime(new_time):
     query_string = 'update Time set currentTime= $nt'
