@@ -56,9 +56,9 @@ class auction(sql_page):
             sellerInfo = sellerInfo)
         
     def POST(self):
-    	return getInputArgsThenQuery()
+    	return self.getInputArgsThenQuery()
 
-    def getInputArgsThenQuery():
+    def getInputArgsThenQuery(self):
     	post_params = web.input()
         message = ''
         itemid = int(post_params['itemid'])
@@ -76,9 +76,9 @@ class auction(sql_page):
         except:
             message = 'Bad entry: you must enter a valid price!'
             return self.render_template('auction.html',message=message)
-     	return querySearchArgs(message,itemid,userid,price)
+     	return self.querySearchArgs(message,itemid,userid,price)
 
-    def querySearchArgs(message,itemid,userid,price):
+    def querySearchArgs(self,message,itemid,userid,price):
     	t = sqlitedb.transaction()
         try:
             bidClosed = sqlitedb.isAuctionClosed(itemid)
