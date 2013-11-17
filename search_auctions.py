@@ -24,62 +24,21 @@ class search_auctions(sql_page):
         #bid status: open,closed or any
         #must come as first term in search query
         #last case does nothing just a way to get syntax with AND's in others to work
-        bidStatus = post_params['bid_status']
-        if bidStatus=='closed':
-            bidStatus=' Datetime(currentTime)>=Datetime(ends) '
-        elif bidStatus=='open':
-            bidStatus=' Datetime(currentTime)<Date(ends) '
-        else:
-            bidStatus=' Datetime(currentTime)=Datetime(currentTime)'
+        bidStatus = self.getBidStatus(post_params['bid_status'])
         #how to order the search results for display
-        order = post_params['sort_by']
-        if order=='price':
-            order= ' order by currently '
-        elif order=='endTime':
-            order= ' order by ends '
-        else:
-            order=' order by numberOfBids'
+        order = self.getOrder(post_params['sort_by'])
         #category:string to filter category names on
         #need a seperate query b/c schema has it in seperate table
-        category = post_params['category']
-        if category != '':
-            category = ' and categoryName like \'%' + category + '%\''
-
+        category = self.getCategory(post_params['category'])
         #name:string to filter name, directly appended to queries
-        name = post_params['name']
-        if name != '':
-            name = ' and name like \'%' + name + '%\' '
-
-        message = ''
+        name = self.getName(post_params['name'])
         #itemID: query string
-        itemID = post_params['itemid']
-        if itemID != '':
-            try:
-                itemID = int(itemID)
-                itemID = ' and itemID=' + str(itemID) + ' '
-            except:
-                itemID = ''
-                message += 'Error: ITEM ID entered was not of proper type (Integer) -> filter ignored. '
+        (itemID,message) = self.getItemID(post_params['itemid'],'')
         #priceHigh: query string
-        priceHigh = post_params['toPrice']
-        if priceHigh != '':
-            try:
-                priceHigh = float(priceHigh)
-                priceHigh = ' and currently<=' + str(priceHigh) + ' '
-            except: 
-                priceHigh = ''
-                message += 'Error: TO PRICE entered was not of proper type (Number) -> filter ignored. '
+        (priceHigh,message) = self.getPriceHigh(post_params['toPrice'],message)
         #priceLow: query string
-        priceLow = post_params['fromPrice']
-        if priceLow != '':
-            try:
-                priceLow = float(priceLow)
-                priceLow = ' and currently>=' + str(priceLow) + ' '
-            except: 
-                priceLow = ''
-                print("Ooooooooooooooo")
-                message += 'Error: FROM PRICE entered was not of proper type (Number) -> filter ignored. '
-
+        (priceLow,message) = self.getPriceLow(post_params['fromPrice'],message)
+        
         return {'bidStatus':bidStatus,\
             'name':name,\
             'itemID':itemID,\
@@ -88,7 +47,58 @@ class search_auctions(sql_page):
             'order':order,\
             'message':message,\
             'category':category}
-
+    def getBidStatus(self,bidStatus):
+        if bidStatus=='closed':
+            bidStatus=' Datetime(currentTime)>=Datetime(ends) or (currently>=buyPrice and buyPrice is not null) '
+        elif bidStatus=='open':
+            bidStatus=' Datetime(currentTime)<Date(ends) and (currently<buyPrice or buyPrice is null)'
+        else:
+            bidStatus=' Datetime(currentTime)=Datetime(currentTime)'
+        return bidStatus
+    def getOrder(self,order):
+        if order=='price':
+            order= ' order by currently '
+        elif order=='endTime':
+            order= ' order by ends '
+        else:
+            order=' order by numberOfBids'
+        return order
+    def getCategory(self,category):
+        if category != '':
+            category = ' and categoryName like \'%' + category + '%\''
+        return category
+    def getName(self,name):
+        if name != '':
+            name = ' and name like \'%' + name + '%\' '
+        return name
+    def getItemID(self,itemID,message):
+        if itemID != '':
+            try:
+                itemID = int(itemID)
+                itemID = ' and itemID=' + str(itemID) + ' '
+            except:
+                itemID = ''
+                message += 'Error: ITEM ID entered was not of proper type (Integer) -> filter ignored. '
+        return (itemID,message)
+    def getPriceHigh(self,priceHigh,message):
+        if priceHigh != '':
+            try:
+                priceHigh = float(priceHigh)
+                priceHigh = ' and currently<=' + str(priceHigh) + ' '
+            except: 
+                priceHigh = ''
+                message += 'Error: TO PRICE entered was not of proper type (Number) -> filter ignored. '
+        return (priceHigh,message)
+    def getPriceLow(self,priceLow,message):
+        if priceLow != '':
+            try:
+                priceLow = float(priceLow)
+                priceLow = ' and currently>=' + str(priceLow) + ' '
+            except: 
+                priceLow = ''
+                print("Ooooooooooooooo")
+                message += 'Error: FROM PRICE entered was not of proper type (Number) -> filter ignored. '
+        return (priceLow,message)
     def displaySearch(self,search_params):
         if search_params['category']=='':
             itemResults = sqlitedb.filterOnItemRelation(search_params)

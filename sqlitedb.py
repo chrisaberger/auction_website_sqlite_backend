@@ -68,7 +68,7 @@ def filterOnItemAndCategoryRelation(search_params):
     return item_results
 
 def isAuctionClosed(itemID):
-    query_string = 'select * from Item join Time where currently<buyPrice and itemID=$id and Date(currentTime)<=Date(ends)'
+    query_string = 'select * from Item join Time where itemID=$id and (currently<buyPrice or buyPrice is null) and Datetime(currentTime)<Datetime(ends)'
     results = query(query_string,{'id':itemID})
     return isResultEmpty(results) 
 
