@@ -2,7 +2,7 @@
 {% block content %}
 <h3> Auction Page </h3>
 {% if message is defined %}
-	{{message}}
+	<font color="red" size="4"><b><i>{{message}}</i></b></font>
 {% endif %}
 {# display item information #}
 {% if itemInfo is defined %}
@@ -60,13 +60,14 @@
 {% set displayItemID = '' %}
 {% if itemInfo is defined %}
 	{% set displayItemID = itemInfo['rows'][0]['itemID'] %}
+	{% set buyPrice =  itemInfo['rows'][0]['buyPrice'] %}
 {% endif %}
 {% if itemInfo is undefined or not itemInfo['bidClosed'] %} 
 	<br/><center>Please enter a bid for an open auction.</center>
 	<form method="POST" action="auction">
 	    <p align="center"><b>item id:</b> <input type="text" name="itemid" value="{{displayItemID}}">
 	        <b>User ID:</b> <input type="text" name="userid" value="">
-	        <b>Price:</b> $<input type="text" name="price" value=""></p>
+	        <b>Price:</b> $<input type="text" name="price" value="{{buyPrice if buyPrice != None}}"></p>
 	    <p align="center"><input type="submit" value="Place"></p>   
 	</form>
 {% endif %}

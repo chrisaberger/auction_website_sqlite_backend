@@ -3,8 +3,8 @@ import web
 db = web.database(dbn='sqlite',
         db='auctions.db' #TODO: add your SQLite database filename
     )
-db.query('PRAGMA foreign_keys = ON') # Enable foreign key constraints
-                                     # WARNING: DO NOT REMOVE THIS!
+def enforceForeignKey():
+    db.query('PRAGMA foreign_keys = ON')
 
 ######################BEGIN HELPER METHODS######################
 
@@ -28,18 +28,24 @@ def getCurrentTime():
     query_string = 'select currentTime from Time'
     currentTime = query(query_string)
     return currentTime
+
 def placeBid(currentTime,itemid,userid,price):
     query_string = 'insert into Bid values ($ct,$bid,$p,$iid)'
     query(query_string,{'iid':itemid,'ct':currentTime,'p':price,'bid':userid})
     return 
 
+def updateNumberOfBidsAndCurrently(itemid,price):
+    query_string = 'update Item set numberOfBids=numberOfBids+1,currently=$p where itemID=$iid'
+    query(query_string,{'iid':itemid,'p':price})
+    return 
+
 def auctionWinner(itemID):
-    query_string = 'select bidderID from Bid where itemID=$id group by itemID having max(amount)'
+    query_string = 'select distinct bidderID from Bid where itemID=$id group by itemID having max(amount)'
     winnerID = query(query_string,{'id':itemID})
     return winnerID
 
 def filterOnItemRelation(search_params):
-    query_string = 'select itemID,name,currently,numberOfBids,started,ends,buyPrice from Item join Time where ' \
+    query_string = 'select distinct itemID,name,currently,numberOfBids,started,ends,buyPrice from Item join Time where ' \
         + search_params['bidStatus']\
         + search_params['name']\
         + search_params['itemID']\
@@ -50,7 +56,7 @@ def filterOnItemRelation(search_params):
     return item_results
 
 def filterOnItemAndCategoryRelation(search_params):
-    query_string = 'select itemID,name,currently,numberOfBids,started,ends,buyPrice from (Item join Category using(itemID)) join Time where ' \
+    query_string = 'select distinct itemID,name,currently,numberOfBids,started,ends,buyPrice from (Item join Category using(itemID)) join Time where ' \
         + search_params['bidStatus']\
         + search_params['name']\
         + search_params['itemID']\
@@ -62,7 +68,7 @@ def filterOnItemAndCategoryRelation(search_params):
     return item_results
 
 def isAuctionClosed(itemID):
-    query_string = 'select * from Item join Time where itemID=$id and Date(currentTime)<=Date(ends)'
+    query_string = 'select * from Item join Time where currently<buyPrice and itemID=$id and Date(currentTime)<=Date(ends)'
     results = query(query_string,{'id':itemID})
     return isResultEmpty(results) 
 
