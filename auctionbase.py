@@ -123,7 +123,7 @@ class auction(sql_page):
             return render_template('auction.html',message=message)
         currentTime = sqlitedb.getTime()
         sqlitedb.placeBid(currentTime,itemid,userid,price)
-        message = userID + ' successfully placed a bid of $' + str(price) +' itemID=' + str(itemid)
+        message = userid + ' successfully placed a bid of $' + str(price) +' itemID=' + str(itemid)
         return self.getNotOverloaded(itemid,message)
         #return render_template('auction.html',message=message)
 
