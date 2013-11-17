@@ -35,7 +35,6 @@ class auction(sql_page):
         #else:
         #    t.commit()
         #print(bidClosed)
-        print('ooooooooooooooooooooo')
         categoryInfo = self.prepareQueryForRender(categoryResults) 
         sellerInfo = self.prepareQueryForRender(sellerResults)
         bidInfo = self.prepareQueryForRender(bidResults)
