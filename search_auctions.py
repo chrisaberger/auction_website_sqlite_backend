@@ -96,7 +96,6 @@ class search_auctions(sql_page):
                 priceLow = ' and currently>=' + str(priceLow) + ' '
             except: 
                 priceLow = ''
-                print("Ooooooooooooooo")
                 message += 'Error: FROM PRICE entered was not of proper type (Number) -> filter ignored. '
         return (priceLow,message)
     def displaySearch(self,search_params):
