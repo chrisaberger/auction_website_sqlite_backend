@@ -21,19 +21,19 @@ class auction(sql_page):
         #get item information
         #if no item lookup display basic template
     def getNotOverloaded(self,itemID,message):
-        #t = sqlitedb.transaction()
-        #try:
-        bidClosed = sqlitedb.isAuctionClosed(itemID)
-        itemResults = sqlitedb.getAuctionByItemID(itemID)
-        itemInfo = self.prepareQueryForRender(itemResults)
-        categoryResults = sqlitedb.getAuctionCategories(itemID)
-        sellerResults = sqlitedb.filterBySeller( ((itemInfo['rows'])[0]['sellerID']) )
-        bidResults = sqlitedb.getBidHistory(itemID)
-        winner = sqlitedb.auctionWinner(itemID)
-        #except Exception as e:
-        #    print(e)
-        #else:
-        #    t.commit()
+        t = sqlitedb.transaction()
+        try:
+			bidClosed = sqlitedb.isAuctionClosed(itemID)
+			itemResults = sqlitedb.getAuctionByItemID(itemID)
+			itemInfo = self.prepareQueryForRender(itemResults)
+			categoryResults = sqlitedb.getAuctionCategories(itemID)
+			sellerResults = sqlitedb.filterBySeller( ((itemInfo['rows'])[0]['sellerID']) )
+			bidResults = sqlitedb.getBidHistory(itemID)
+			winner = sqlitedb.auctionWinner(itemID)
+        except Exception as e:
+            print(e)
+        else:
+            t.commit()
         #print(bidClosed)
         categoryInfo = self.prepareQueryForRender(categoryResults) 
         sellerInfo = self.prepareQueryForRender(sellerResults)
@@ -101,5 +101,3 @@ class auction(sql_page):
 
         message = userid + ' successfully placed a bid of $' + str(price) +' itemID=' + str(itemid)
         return self.getNotOverloaded(itemid,message)
-
-
